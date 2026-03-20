@@ -7,7 +7,13 @@ import (
 
 	"github.com/lazymentor/lazymint/internal/agents"
 	"github.com/lazymentor/lazymint/internal/embed"
+	"github.com/lazymentor/lazymint/internal/nvim"
 	"github.com/lazymentor/lazymint/internal/tui"
+	"github.com/lazymentor/lazymint/internal/update"
+)
+
+const (
+	repo = "Bau-sua/LazyMentor"
 )
 
 func main() {
@@ -15,7 +21,35 @@ func main() {
 	installCmd := flag.Bool("install", false, "Install lazymentor to detected agents")
 	uninstallCmd := flag.Bool("uninstall", false, "Uninstall lazymentor from detected agents")
 	listCmd := flag.Bool("list", false, "List detected agents and installation status")
+	versionCmd := flag.Bool("version", false, "Show version information")
+	checkCmd := flag.Bool("check-updates", false, "Check for updates")
+	updateCmd := flag.Bool("update", false, "Update to the latest version")
+	nvimInfoCmd := flag.Bool("nvim-info", false, "Show Neovim configuration info")
 	flag.Parse()
+
+	// Version flag (works with any other flags)
+	if *versionCmd {
+		showVersion()
+		return
+	}
+
+	// Neovim info
+	if *nvimInfoCmd {
+		showNvimInfo()
+		return
+	}
+
+	// Check for updates
+	if *checkCmd {
+		checkForUpdates()
+		return
+	}
+
+	// Update
+	if *updateCmd {
+		performUpdate()
+		return
+	}
 
 	// CLI mode
 	if *installCmd || *uninstallCmd || *listCmd {
@@ -55,6 +89,73 @@ func isTTY() bool {
 	return (stdinInfo.Mode() & os.ModeCharDevice) != 0
 }
 
+func showVersion() {
+	fmt.Printf("LazyMentor %s\n", update.GetCurrentVersion())
+	fmt.Printf("Repository: %s\n", repo)
+}
+
+func showNvimInfo() {
+	cfg := nvim.Detect()
+	fmt.Println(cfg.FormatForPrompt())
+}
+
+func checkForUpdates() {
+	fmt.Println("Checking for updates...")
+	fmt.Println()
+
+	result, err := update.CheckForUpdates(repo)
+	if err != nil {
+		fmt.Printf("Error checking for updates: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Current version: %s\n", result.CurrentVersion)
+	fmt.Printf("Latest version:  %s\n", result.LatestVersion)
+	fmt.Println()
+
+	if result.UpdateNeeded {
+		fmt.Println("A new version is available!")
+		fmt.Printf("Download: %s\n", result.DownloadURL)
+		fmt.Println()
+		fmt.Println("To update, run: lazymint --update")
+	} else {
+		fmt.Println("You're running the latest version.")
+	}
+}
+
+func performUpdate() {
+	binaryPath, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Could not determine binary path: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Checking for updates...")
+	fmt.Println()
+
+	result, err := update.CheckForUpdates(repo)
+	if err != nil {
+		fmt.Printf("Error checking for updates: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !result.UpdateNeeded {
+		fmt.Println("You're already running the latest version!")
+		return
+	}
+
+	fmt.Printf("Updating from %s to %s...\n", result.CurrentVersion, result.LatestVersion)
+	fmt.Println()
+
+	if err := update.DownloadAndReplace(result.DownloadURL, binaryPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("✓ Update complete!")
+	fmt.Println("Run 'lazymint --version' to verify.")
+}
+
 func runCLI(install, uninstall, list bool) {
 	detectedAgents := agents.DetectAgents()
 
@@ -84,19 +185,37 @@ func runCLI(install, uninstall, list bool) {
 }
 
 func listAgents(detectedAgents []agents.Agent) {
-	if len(detectedAgents) == 0 {
-		fmt.Println("No supported agents detected.")
-		return
+	fmt.Println("LazyMentor CLI")
+	fmt.Printf("Version: %s\n", update.GetCurrentVersion())
+	fmt.Println()
+
+	// Show Neovim info
+	cfg := nvim.Detect()
+	if cfg.Installed {
+		fmt.Println("Neovim:")
+		if cfg.IsLazyVim {
+			fmt.Printf("  ✓ LazyVim %s detected\n", cfg.Version)
+		} else {
+			fmt.Printf("  ✓ Neovim %s detected\n", cfg.Version)
+		}
+		fmt.Printf("  Config: %s\n", cfg.ConfigDir)
+		if len(cfg.Plugins) > 0 {
+			fmt.Printf("  Plugins: %s\n", joinStrings(cfg.Plugins, ", "))
+		}
+		fmt.Println()
 	}
 
-	fmt.Println("Detected agents:")
-	fmt.Println()
+	// Show agents
+	fmt.Println("Agents:")
+	if len(detectedAgents) == 0 {
+		fmt.Println("  (none detected)")
+	}
 	for _, agent := range detectedAgents {
 		installed := "not installed"
 		if agent.IsInstalled() {
 			installed = "installed"
 		}
-		fmt.Printf("  • %s (%s) - %s\n", agent.Name, agent.ConfigPath, installed)
+		fmt.Printf("  • %s - %s\n", agent.Name, installed)
 	}
 }
 
@@ -190,4 +309,15 @@ func loadLocalPrompt() string {
 		return ""
 	}
 	return string(data)
+}
+
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
 }
