@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,8 +127,12 @@ func TestInstallPromptToOpenCode(t *testing.T) {
 		Type:        OpenCode,
 		ConfigPath:  tmpDir,
 		PromptPath:  filepath.Join(tmpDir, LazyMentorFile),
+		ConfigFile:  filepath.Join(tmpDir, "opencode.json"),
 		Description: "Test agent",
 	}
+
+	// Create a minimal opencode.json
+	os.WriteFile(agent.ConfigFile, []byte(`{"test": true}`), 0644)
 
 	testPrompt := "# LazyMentor - System Prompt\nTest content"
 
@@ -136,7 +141,7 @@ func TestInstallPromptToOpenCode(t *testing.T) {
 		t.Fatalf("InstallPrompt() error = %v", err)
 	}
 
-	// Verify file was created
+	// Verify lazymentor.md was created
 	installedPath := filepath.Join(tmpDir, LazyMentorFile)
 	content, err := os.ReadFile(installedPath)
 	if err != nil {
@@ -151,6 +156,70 @@ func TestInstallPromptToOpenCode(t *testing.T) {
 	if !agent.IsInstalled() {
 		t.Error("IsInstalled() should return true after installation")
 	}
+
+	// Verify opencode.json was modified with lazymentor agent
+	jsonContent, err := os.ReadFile(agent.ConfigFile)
+	if err != nil {
+		t.Fatalf("Failed to read opencode.json: %v", err)
+	}
+
+	var config map[string]interface{}
+	if err := json.Unmarshal(jsonContent, &config); err != nil {
+		t.Fatalf("Failed to parse opencode.json: %v", err)
+	}
+
+	agentSection, ok := config["agent"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Agent section not found in opencode.json")
+	}
+
+	if _, ok := agentSection[LazyMentorAgentName]; !ok {
+		t.Error("lazymentor agent not found in opencode.json")
+	}
+}
+
+func TestOpenCodeAgentJSONModification(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	agent := Agent{
+		Name:        "OpenCode Test",
+		Type:        OpenCode,
+		ConfigPath:  tmpDir,
+		PromptPath:  filepath.Join(tmpDir, LazyMentorFile),
+		ConfigFile:  filepath.Join(tmpDir, "opencode.json"),
+		Description: "Test agent",
+	}
+
+	// Create opencode.json with existing agents
+	existingConfig := `{
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "prompt": "Build agent"
+    }
+  }
+}`
+	os.WriteFile(agent.ConfigFile, []byte(existingConfig), 0644)
+
+	testPrompt := "# LazyMentor - System Prompt\nTest content"
+	if err := agent.InstallPrompt(testPrompt); err != nil {
+		t.Fatalf("InstallPrompt() error = %v", err)
+	}
+
+	// Verify existing agent is preserved
+	jsonContent, _ := os.ReadFile(agent.ConfigFile)
+	var config map[string]interface{}
+	json.Unmarshal(jsonContent, &config)
+
+	agentSection := config["agent"].(map[string]interface{})
+
+	if _, ok := agentSection["build"]; !ok {
+		t.Error("Existing 'build' agent was removed")
+	}
+
+	if _, ok := agentSection[LazyMentorAgentName]; !ok {
+		t.Error("lazymentor agent not added")
+	}
 }
 
 func TestUninstallPromptFromOpenCode(t *testing.T) {
@@ -161,8 +230,12 @@ func TestUninstallPromptFromOpenCode(t *testing.T) {
 		Type:        OpenCode,
 		ConfigPath:  tmpDir,
 		PromptPath:  filepath.Join(tmpDir, LazyMentorFile),
+		ConfigFile:  filepath.Join(tmpDir, "opencode.json"),
 		Description: "Test agent",
 	}
+
+	// Create a minimal opencode.json
+	os.WriteFile(agent.ConfigFile, []byte(`{"test": true}`), 0644)
 
 	// Install first
 	testPrompt := "# LazyMentor - System Prompt\nTest content"
