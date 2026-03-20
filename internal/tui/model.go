@@ -24,6 +24,11 @@ const (
 	ScreenError
 )
 
+// InstallMsg signals that installation completed
+type InstallMsg struct {
+	Err error
+}
+
 // Styles
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -90,6 +95,14 @@ func (m Model) Init() tea.Cmd {
 // Update handles updates
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case InstallMsg:
+		if msg.Err != nil {
+			m.Screen = ScreenError
+			m.ErrorMessage = msg.Err.Error()
+		} else {
+			m.Screen = ScreenSuccess
+		}
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -103,7 +116,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case ScreenAgentSelect:
 				if len(m.Agents) > 0 {
 					m.Screen = ScreenInstalling
-					return m, m.installPrompt
+					return m, installPromptCmd(m.SelectedAgent, m.Agents[m.SelectedAgent])
 				}
 			}
 		case "up", "k":
@@ -275,30 +288,20 @@ func errorView(m Model) string {
 	return s.String()
 }
 
-// installPrompt installs the prompt to the selected agent
-func (m *Model) installPrompt() tea.Msg {
-	if m.SelectedAgent < 0 || m.SelectedAgent >= len(m.Agents) {
-		m.Screen = ScreenError
-		m.ErrorMessage = "No agent selected"
-		return nil
+// installPrompt returns a command that installs the prompt asynchronously
+func installPromptCmd(selectedAgent int, agent agents.Agent) tea.Cmd {
+	return func() tea.Msg {
+		prompt := loadLocalPrompt()
+		if prompt == "" {
+			prompt = embed.LazyMentorPrompt
+		}
+
+		if err := agent.InstallPrompt(prompt); err != nil {
+			return InstallMsg{Err: err}
+		}
+
+		return InstallMsg{Err: nil}
 	}
-
-	agent := m.Agents[m.SelectedAgent]
-	prompt := loadLocalPrompt()
-	if prompt == "" {
-		prompt = embed.LazyMentorPrompt
-	}
-
-	m.InstallingMessage = fmt.Sprintf("Installing to %s...", agent.Name)
-
-	if err := agent.InstallPrompt(prompt); err != nil {
-		m.Screen = ScreenError
-		m.ErrorMessage = err.Error()
-		return nil
-	}
-
-	m.Screen = ScreenSuccess
-	return nil
 }
 
 func loadLocalPrompt() string {

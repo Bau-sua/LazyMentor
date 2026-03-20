@@ -37,11 +37,22 @@ func main() {
 }
 
 func isTTY() bool {
+	// Check if stdout is a terminal
 	fileInfo, err := os.Stdout.Stat()
 	if err != nil {
 		return false
 	}
-	return (fileInfo.Mode() & os.ModeCharDevice) != 0
+	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		return false
+	}
+
+	// Check if stdin is a terminal (more reliable for curl | bash)
+	stdinInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return true // Assume TTY if we can't check stdin
+	}
+
+	return (stdinInfo.Mode() & os.ModeCharDevice) != 0
 }
 
 func runCLI(install, uninstall, list bool) {
