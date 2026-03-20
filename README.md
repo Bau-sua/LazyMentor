@@ -235,6 +235,58 @@ GOOS=darwin GOARCH=arm64 go build -o lazymint-darwin-arm64 ./cmd/installer/
 
 ---
 
+## Contributing
+
+Contributions are welcome! If you want to improve LazyMentor, here's how you can help:
+
+### Ways to Contribute
+
+- **Report bugs** — Open an issue with steps to reproduce
+- **Suggest features** — Open an issue describing what you'd like to see
+- **Submit PRs** — Fork the repo and submit pull requests
+- **Improve documentation** — Fix typos, add examples, translate
+
+### Development Setup
+
+```bash
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/LazyMentor.git
+cd LazyMentor
+
+# Install dependencies
+go mod download
+
+# Run tests
+go test -v ./...
+
+# Build locally
+go build -o lazymint ./cmd/installer/
+```
+
+### Code Style
+
+- Run `go fmt ./...` before committing
+- Add tests for new features
+- Keep commits focused and atomic
+
+### Submitting Changes
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Ideas for Contributions
+
+- Additional AI agent support
+- Interactive practice mode (quizzes)
+- Prompt customization options
+- Localization (translations)
+- Better Neovim plugin detection
+
+---
+
 ## License
 
 MIT
