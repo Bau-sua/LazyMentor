@@ -115,14 +115,26 @@ Navigate with:
 For scripts, CI, or quick operations:
 
 ```bash
-# List detected agents and their status
-./lazymint -list
+# List detected agents and Neovim info
+./lazymint --list
 
 # Install lazymentor to all detected agents
-./lazymint -install
+./lazymint --install
 
 # Uninstall lazymentor from all agents
-./lazymint -uninstall
+./lazymint --uninstall
+
+# Check for updates
+./lazymint --check-updates
+
+# Update to latest version
+./lazymint --update
+
+# Show Neovim configuration info
+./lazymint --nvim-info
+
+# Show version
+./lazymint --version
 ```
 
 ### Silent Mode
@@ -194,6 +206,20 @@ GOOS=darwin GOARCH=arm64 go build -o lazymint-darwin-arm64 ./cmd/installer/
 ---
 
 ## Changelog
+
+### [v0.2.0] - 2026-03-20
+
+#### Added
+- **Auto-update**: `--check-updates` and `--update` commands
+- **Neovim detection**: Detect version, LazyVim, leader key, and plugins
+- **`--version`**: Show version information
+- **`--nvim-info`**: Display Neovim configuration details
+- **`--list`**: Enhanced with Neovim info display
+
+#### Technical
+- Added `internal/nvim` package for Neovim detection
+- Added `internal/update` package for GitHub releases
+- 26 passing unit tests
 
 ### [v0.1.0] - 2026-03-20
 
