@@ -4,6 +4,8 @@
 
 A TUI installer that sets up an AI mentor for learning LazyVim keybindings and navigation. Works with **OpenCode** and **Claude Code**.
 
+> **Status: COMPLETED** ✅ — June 2026
+
 ---
 
 ## What is LazyMentor?
